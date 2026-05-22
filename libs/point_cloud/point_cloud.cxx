@@ -1203,6 +1203,7 @@ struct PlyVertex
   float x,y,z;             /* the usual 3-space position of a vertex */
   float nx, ny, nz;
   unsigned char red, green, blue, alpha;
+	int label;
 };
 
 static PlyProperty vert_props[] = { /* list of property information for a vertex */
@@ -1217,6 +1218,7 @@ static PlyProperty vert_props[] = { /* list of property information for a vertex
   {"blue", Uint8, Uint8, offsetof(PlyVertex,blue), 0, 0, 0, 0},
   {"alpha", Uint8, Uint8, offsetof(PlyVertex,alpha), 0, 0, 0, 0},
   {"intensity", Uint8, Uint8, offsetof(PlyVertex,red), 0, 0, 0, 0},
+	{"label", Int32, Int32, offsetof(PlyVertex,label), 0, 0, 0, 0},
 };
 
 typedef struct PlyFace {
@@ -1244,6 +1246,7 @@ bool point_cloud::read_ply(const string& _file_name)
 			bool has_P[3] = { false, false, false };
 			bool has_N[3] = { false, false, false };
 			bool has_C[4] = { false, false, false, false };
+			bool has_label = false;
 			bool is_intensity = false;
 			for (int pi = 0; pi < elem->nprops; ++pi) {
 				if (strcmp("x", elem->props[pi]->name) == 0)
@@ -1270,12 +1273,16 @@ bool point_cloud::read_ply(const string& _file_name)
 					has_C[0] = has_C[1] = has_C[2] = true;
 					is_intensity = true;
 				}
+				if (strcmp("label", elem->props[pi]->name) == 0)
+					has_label = true;
 			}
 			if (!(has_P[0] && has_P[1] && has_P[2]))
 				std::cerr << "ply file " << _file_name << " has no complete position property!" << std::endl;
 			P.resize(nrVertices);
 			has_nmls = has_N[0] && has_N[1] && has_N[2];
 			has_clrs = has_C[0] && has_C[1] && has_C[2];
+			if (has_label)
+				labels.resize(nrVertices);
 			if (has_nmls)
 				N.resize(nrVertices);
 			if (has_clrs)
@@ -1290,6 +1297,8 @@ bool point_cloud::read_ply(const string& _file_name)
 					if (has_C[p])
 						setup_property_ply(ply_in, &vert_props[6+p]);
 			}
+			if (has_label)
+				setup_property_ply(ply_in, &vert_props[11]);
 			for (int j = 0; j < nrVertices; j++) {
 				PlyVertex vertex;
 				get_element_ply(ply_in, (void *)&vertex);
@@ -1301,6 +1310,8 @@ bool point_cloud::read_ply(const string& _file_name)
 					C[j][1] = byte_to_color_component(is_intensity ? vertex.red : vertex.green);
 					C[j][2] = byte_to_color_component(is_intensity ? vertex.red : vertex.blue);
 				}
+				if (has_label)
+					labels[j] = (GLint)vertex.label;
 			}
 		}
 	}
@@ -1315,9 +1326,12 @@ bool point_cloud::write_ply(const std::string& file_name) const
 	PlyFile* ply_out = open_ply_for_write(file_name.c_str(), 2, propNames, PLY_BINARY_LE);
 	if (!ply_out) 
 		return false;
+	bool write_labels = labels.size() == P.size();
 	describe_element_ply (ply_out, "vertex", (int)P.size());
 	for (int p=0; p<10; ++p) 
 		describe_property_ply (ply_out, &vert_props[p]);
+	if (write_labels)
+		describe_property_ply(ply_out, &vert_props[11]);
 	describe_element_ply (ply_out, "face", 0);
 	describe_property_ply (ply_out, &face_props[0]);
 	header_complete_ply(ply_out);
@@ -1350,6 +1364,8 @@ bool point_cloud::write_ply(const std::string& file_name) const
 			vertex.blue  = 255;
 		}
 		vertex.alpha = 255;
+		if (write_labels)
+			vertex.label = (int)labels[j];
 		put_element_ply(ply_out, (void *)&vertex);
 	}
 	put_element_setup_ply (ply_out, "face");
