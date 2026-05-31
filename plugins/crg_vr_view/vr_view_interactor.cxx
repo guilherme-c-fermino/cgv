@@ -688,13 +688,13 @@ void vr_view_interactor::add_trackable_spheres(const float* pose, int i, std::ve
 {
 	const mat3& R_ci = reinterpret_cast<const mat3&>(pose[0]);
 	const vec3& p_ci = reinterpret_cast<const vec3&>(pose[9]);
-	spheres.push_back(vec4(p_ci, 0.04f));
-	spheres.push_back(vec4(p_ci + 0.05f*R_ci.col(0), 0.01f));
-	spheres.push_back(vec4(p_ci - 0.05f*R_ci.col(0), 0.01f));
-	spheres.push_back(vec4(p_ci + 0.05f*R_ci.col(1), 0.01f));
-	spheres.push_back(vec4(p_ci - 0.05f*R_ci.col(1), 0.01f));
-	spheres.push_back(vec4(p_ci + 0.05f*R_ci.col(2), 0.01f));
-	spheres.push_back(vec4(p_ci - 0.05f*R_ci.col(2), 0.01f));
+	spheres.push_back(vec4(p_ci, 0.03f));
+	spheres.push_back(vec4(p_ci + 0.05f*R_ci.col(0), 0.0075f));
+	spheres.push_back(vec4(p_ci - 0.05f*R_ci.col(0), 0.0075f));
+	spheres.push_back(vec4(p_ci + 0.05f*R_ci.col(1), 0.0075f));
+	spheres.push_back(vec4(p_ci - 0.05f*R_ci.col(1), 0.0075f));
+	spheres.push_back(vec4(p_ci + 0.05f*R_ci.col(2), 0.0075f));
+	spheres.push_back(vec4(p_ci - 0.05f*R_ci.col(2), 0.0075f));
 	sphere_colors.push_back(rgb(0.5f + (1 - i)*0.5f, 0.5f, 0.5f + 0.5f*i));
 	sphere_colors.push_back(rgb(1, 0, 0));
 	sphere_colors.push_back(rgb(1, 0.5f, 0.5f));
