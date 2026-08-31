@@ -95,13 +95,22 @@ void ann_tree::build(const point_cloud& _pc, const std::vector<Idx>& component_i
 
 void ann_tree::extract_neighbors(Idx i, Idx k, std::vector<Idx>& N) const
 {
-	static std::vector<float> dists;
-	static std::vector<Idx> tmp;
+	// thread_local instead of static: concurrent queries must not share scratch memory
+	thread_local std::vector<float> dists;
+	thread_local std::vector<Idx> tmp;
 	ann_struct* ann = static_cast<ann_struct*>(ann_impl);
-	if (!ann) {
+	N.clear();
+	if (!ann || !ann->ps || !pc) {
 		std::cerr << "no ann_tree built" << std::endl;
 		return;
 	}
+	const Idx n_pts = (Idx)ann->ps->nPoints();
+	if (k < 1 || n_pts < 2 || i < 0 || i >= (Idx)pc->get_nr_points())
+		return;
+	// annkSearch reads k+1 results (the query point itself is included and skipped below),
+	// asking for more results than there are points corrupts memory
+	if (k > n_pts - 1)
+		k = n_pts - 1;
 	N.resize(k);
 	tmp.resize(k+1);
 	dists.resize(k+1);
@@ -112,14 +121,14 @@ void ann_tree::extract_neighbors(Idx i, Idx k, std::vector<Idx>& N) const
 ann_tree::Idx ann_tree::find_closest(const Pnt& p) const
 {
 	ann_struct* ann = static_cast<ann_struct*>(ann_impl);
-	if (!ann) {
+	if (!ann || !ann->ps || ann->ps->nPoints() < 1) {
 		std::cerr << "no ann_tree built" << std::endl;
 		return -1;
 	}
-	float dist;
-	unsigned int result;
-	ann->ps->annkSearch(const_cast<ANNpoint>(&p[0]), 1, (ANNidxArray)&result, &dist);
-	return result;
+	float dist = 0.f;
+	ANNidx result = -1;
+	ann->ps->annkSearch(const_cast<ANNpoint>(&p[0]), 1, &result, &dist);
+	return (Idx)result;
 }
 void ann_tree::find_closest_points(const Pnt& p, Idx k, std::vector<const Pnt*>& knn) const
 {
